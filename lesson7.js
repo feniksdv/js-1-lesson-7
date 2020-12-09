@@ -9,6 +9,8 @@ var snake_timer; // Таймер змейки
 var food_timer; // Таймер для еды
 var score = 0; // Результат
 
+var food_cell_classes; // Вынес переменую для обращения
+
 function init() {
     prepareGameField(); // Генерация поля
 
@@ -92,9 +94,6 @@ function respawn() {
     snake.push(snake_tail);
 }
 
-
-
-
 /**
  * Движение змейки
  */
@@ -123,11 +122,36 @@ function move() {
         new_unit = document.getElementsByClassName('cell-' + (coord_y + 1) + '-' + (coord_x))[0];
     }
 
+    if (new_unit == undefined) //телепорт
+    {
+        if (coord_y == 0) {
+            new_unit = document.getElementsByClassName('cell-' + (19) + '-' + (coord_x))[0];
+            console.log()
+        }
+        else if (coord_y == 19) {
+            new_unit = document.getElementsByClassName('cell-' + (0) + '-' + (coord_x))[0];
+        }
+        else if (coord_x == 0) {
+            new_unit = document.getElementsByClassName('cell-' + (coord_y) + '-' + (19))[0];
+        }
+        else if (coord_x == 19) {
+            new_unit = document.getElementsByClassName('cell-' + (coord_y) + '-' + (0))[0];
+        }
+    }
+    
     // Проверки
     // 1) new_unit не часть змейки
     // 2) Змейка не ушла за границу поля
     //console.log(new_unit);
-    if (!isSnakeUnit(new_unit) && new_unit !== undefined) {
+
+    if (!isSnakeUnit(new_unit)) {
+
+        var bombArr = new_unit.getAttribute('class').split(' ');//масив для определения бомб
+
+        if ('bomb-unit' == bombArr[2]) { //врезаемся в бомбу
+            finishTheGame();
+        }
+
         // Добавление новой части змейки
         new_unit.setAttribute('class', new_unit.getAttribute('class') + ' snake-unit');
         snake.push(new_unit);
@@ -136,15 +160,11 @@ function move() {
        
 	   if (!haveFood(new_unit)) {
             // Находим хвост
-           var removed = snake.splice(0, 1)[0];
+            var removed = snake.splice(0, 1)[0];
             var classes = removed.getAttribute('class').split(' ');
-			
             // удаляем хвост
             removed.setAttribute('class', classes[0] + ' ' + classes[1]);
         }
-    }
-    else {
-        finishTheGame();
     }
 }
 
@@ -175,8 +195,12 @@ function haveFood(unit) {
     if (unit_classes.includes('food-unit')) {
         check = true;
         createFood();
-
+        createBomb(); //создаем бомбы
         score++;
+
+        //Выводить счёт в режиме реального времени.
+        var count = document.querySelector('.count');
+        count.innerHTML = 'Ваш результат: '+score;
     }
     return check;
 }
@@ -193,8 +217,8 @@ function createFood() {
         var food_y = Math.floor(Math.random() * FIELD_SIZE_Y);
 
         var food_cell = document.getElementsByClassName('cell-' + food_y + '-' + food_x)[0];
-        var food_cell_classes = food_cell.getAttribute('class').split(' ');
-
+         food_cell_classes = food_cell.getAttribute('class').split(' ');
+        
         // проверка на змейку
         if (!food_cell_classes.includes('snake-unit')) {
             var classes = '';
@@ -209,11 +233,50 @@ function createFood() {
 }
 
 /**
+ * Создание бомб
+ */
+function createBomb() {
+    var bombCreated = false;
+
+    while (!bombCreated) { //пока бомбу не создали
+        // рандом
+        var bomb_x = Math.floor(Math.random() * FIELD_SIZE_X);
+        var bomb_y = Math.floor(Math.random() * FIELD_SIZE_Y);
+
+        var bomb_cell = document.getElementsByClassName('cell-' + bomb_y + '-' + bomb_x)[0];
+        var bomb_cell_classes = bomb_cell.getAttribute('class').split(' ');
+
+        // проверка на змейку
+        if (!bomb_cell_classes.includes('snake-unit')) {
+            var classes = '';
+            for (var i = 0; i < bomb_cell_classes.length; i++) {
+                classes += bomb_cell_classes[i] + ' ';
+            }
+
+            var food_cell_classesArr = food_cell_classes[1].split('-'); // масив для проверки
+            var bomb_cell_classesArr = bomb_cell_classes[1].split('-');// масив для проверки
+
+            //Чтобы бомба и еда не заняли один квадрат
+            if (food_cell_classesArr[1] != bomb_cell_classesArr[1] && food_cell_classesArr[2] != bomb_cell_classesArr[2])
+            {
+                bomb_cell.setAttribute('class', classes + 'bomb-unit');
+                bombCreated = true;
+            }
+            else
+            {
+                console.log('бомба не пояилась')
+             }
+            
+        }
+    }
+}
+
+/**
  * Изменение направления движения змейки
  * @param e - событие
  */
 function changeDirection(e) {
-    console.log(e);
+    // console.log(e);
 	
 	switch (e.keyCode) {
         case 37: // Клавиша влево
